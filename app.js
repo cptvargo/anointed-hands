@@ -12,10 +12,100 @@ const KEYS = {
   orders:   'ah_orders',
 };
 
+// ── Demo Placeholder Products (shown until client adds real ones)
+const DEMO_PRODUCTS = [
+  {
+    id: 1,
+    name: 'Decorative Tissue Box Cover',
+    category: 'Tissue Boxes',
+    price: '$28.00',
+    description: 'Elegant crocheted tissue box cover that adds a handmade touch to any room. Fits standard rectangular tissue boxes.',
+    image: 'https://images.unsplash.com/photo-1600369672770-985fd30004eb?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 2,
+    name: 'Handmade Keychain',
+    category: 'Key Chains',
+    price: '$12.00',
+    description: 'Cute crocheted keychain to brighten your keys. Available in various colors and designs. Great as gifts!',
+    image: 'https://images.unsplash.com/photo-1623998022290-a74f8cc36563?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 3,
+    name: 'Cozy Cup Holder Sleeve',
+    category: 'Cup Holders',
+    price: '$15.00',
+    description: 'Keep your drinks warm and your hands cool with this reusable crocheted cup sleeve. Eco-friendly alternative to paper sleeves.',
+    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 4,
+    name: 'Boho Crochet Purse',
+    category: 'Purses',
+    price: '$55.00',
+    description: 'Stylish handmade purse with secure closure and interior pocket. Perfect for everyday use or special occasions.',
+    image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 5,
+    name: 'Inspirational Wall Plaque',
+    category: 'Wall Plaques',
+    price: '$35.00',
+    description: 'Beautiful crocheted wall hanging with inspirational message. Adds warmth and character to any space.',
+    image: 'https://images.unsplash.com/photo-1513519245088-0e12902e35a6?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 6,
+    name: 'Soft Baby Blanket',
+    category: 'Baby Blankets',
+    price: '$65.00',
+    description: 'Ultra-soft baby blanket made with hypoallergenic yarn. Machine washable. Custom colors and personalization available.',
+    image: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 7,
+    name: 'Chunky Knit Beanie',
+    category: 'Hats',
+    price: '$32.00',
+    description: 'Warm and cozy handcrafted beanie perfect for chilly days. One size fits most. Available in multiple colors.',
+    image: 'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: true,
+    date: 'Demo'
+  },
+  {
+    id: 8,
+    name: 'Infinity Scarf',
+    category: 'Scarves',
+    price: '$40.00',
+    description: 'Elegant infinity scarf in a classic stitch pattern. Lightweight yet warm. A timeless accessory.',
+    image: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=400&h=400&fit=crop',
+    stripeLink: '#demo',
+    available: false,
+    date: 'Demo'
+  }
+];
+
 // ── Defaults
 const DEFAULT_SETTINGS = {
-  cashApp:    '',
-  zelle:      '',
   email:      '',
   formspree:  '',
   password:   'ouch2024',
@@ -51,16 +141,20 @@ function getSettings() { return getStorage(KEYS.settings, DEFAULT_SETTINGS); }
 
 function applySettings() {
   const s = getSettings();
-  const cashEl  = document.getElementById('cashAppHandle');
-  const zelleEl = document.getElementById('zelleHandle');
   const emailEl = document.getElementById('contactEmail');
-  if (cashEl  && s.cashApp) cashEl.textContent  = s.cashApp;
-  if (zelleEl && s.zelle)   zelleEl.textContent  = s.zelle;
-  if (emailEl && s.email)   emailEl.href         = `mailto:${s.email}`;
+  if (emailEl && s.email) emailEl.href = `mailto:${s.email}`;
 }
 
 // ── Products
-function getProducts() { return getStorage(KEYS.products, []); }
+function getProducts() { 
+  const stored = getStorage(KEYS.products, []);
+  // Return demo products if no real products exist
+  return stored.length > 0 ? stored : DEMO_PRODUCTS;
+}
+
+function hasRealProducts() {
+  return getStorage(KEYS.products, []).length > 0;
+}
 
 function renderProducts() {
   const products   = getProducts();
@@ -86,13 +180,20 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map(p => `
+  grid.innerHTML = filtered.map(p => {
+    const isDemo = p.date === 'Demo';
+    const buyAction = isDemo 
+      ? `onclick="event.stopPropagation(); alert('🛍️ Demo Mode\\n\\nThis is a placeholder item. When your real products are added, customers will be redirected to Stripe checkout.')"`
+      : `href="${p.stripeLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()"`;
+    
+    return `
     <div class="product-card" onclick="openProduct(${p.id})">
       <div class="product-card-img">
         ${p.image
           ? `<img src="${p.image}" alt="${p.name}" />`
           : `<span>✦</span>`}
       </div>
+      ${isDemo ? '<div class="demo-overlay">Demo</div>' : ''}
       ${p.available === false ? '<div class="sold-overlay">Sold Out</div>' : ''}
       <div class="product-card-body">
         <div class="product-card-cat">${p.category || 'Handmade'}</div>
@@ -100,15 +201,14 @@ function renderProducts() {
         <div class="product-card-footer">
           <span class="product-card-price">${p.price || 'Custom'}</span>
           ${p.stripeLink && p.available !== false
-            ? `<a href="${p.stripeLink}" target="_blank" rel="noopener" class="btn-buy"
-                onclick="event.stopPropagation()">Buy Now</a>`
+            ? `<a ${buyAction} class="btn-buy">Buy Now</a>`
             : p.available === false
               ? `<span class="badge sold">Sold Out</span>`
               : `<span class="badge">Available</span>`}
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function filterProducts(cat) {
@@ -121,6 +221,8 @@ function filterProducts(cat) {
 function openProduct(id) {
   const p = getProducts().find(x => x.id === id);
   if (!p) return;
+
+  const isDemo = p.date === 'Demo';
 
   document.getElementById('productModalCat').textContent  = p.category || 'Handmade';
   document.getElementById('productModalName').textContent = p.name;
@@ -137,15 +239,23 @@ function openProduct(id) {
   if (p.available === false) {
     actions.innerHTML = `
       <div class="sold-notice">This item has sold. Every piece is one of a kind — but we can make something just for you.</div>
-      <a href="#custom" class="btn-primary" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({{behavior:'smooth'}})">Request a Custom Order</a>`;
+      <a href="#custom" class="btn-primary" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({behavior:'smooth'})">Request a Custom Order</a>`;
+  } else if (isDemo) {
+    actions.innerHTML = `
+      <div class="demo-notice" style="background:var(--lavender-light);padding:1rem;border-radius:8px;margin-bottom:1rem;text-align:center">
+        <strong style="color:var(--lavender-dark)">✨ Demo Item</strong>
+        <p style="font-size:.85rem;color:var(--text-light);margin-top:.5rem">This is a placeholder. Real products will link to Stripe checkout.</p>
+      </div>
+      <button class="btn-primary" onclick="alert('🛍️ Demo Mode\\n\\nWhen real products are added, this button will redirect to Stripe for secure payment.')">Buy Now — Secure Checkout</button>
+      <p style="font-size:.75rem;color:var(--text-light);text-align:center">Pay securely with card, Apple Pay, or Google Pay via Stripe.</p>`;
   } else if (p.stripeLink) {
     actions.innerHTML = `
       <a href="${p.stripeLink}" target="_blank" rel="noopener" class="btn-primary">Buy Now — Secure Checkout</a>
       <p style="font-size:.75rem;color:var(--text-light);text-align:center">Pay securely with card, Apple Pay, or Google Pay via Stripe.</p>
-      <a href="#custom" class="btn-ghost" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({{behavior:'smooth'}})">Request a Custom Version</a>`;
+      <a href="#custom" class="btn-ghost" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({behavior:'smooth'})">Request a Custom Version</a>`;
   } else {
     actions.innerHTML = `
-      <a href="#custom" class="btn-primary" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({{behavior:'smooth'}})">Request This Item</a>`;
+      <a href="#custom" class="btn-primary" onclick="closeProductModal();document.getElementById('custom').scrollIntoView({behavior:'smooth'})">Request This Item</a>`;
   }
 
   document.getElementById('productModal').style.display = 'flex';
@@ -334,8 +444,6 @@ function renderAdminProducts() {
 // ── Settings
 function loadAdminSettings() {
   const s = getSettings();
-  document.getElementById('setCashApp').value    = s.cashApp   || '';
-  document.getElementById('setZelle').value      = s.zelle     || '';
   document.getElementById('setEmail').value      = s.email     || '';
   document.getElementById('setFormspree').value  = s.formspree || '';
   document.getElementById('setPassword').value   = '';
@@ -344,8 +452,6 @@ function saveSettings() {
   const current = getSettings();
   const newPw   = document.getElementById('setPassword').value.trim();
   const s = {
-    cashApp:   document.getElementById('setCashApp').value.trim(),
-    zelle:     document.getElementById('setZelle').value.trim(),
     email:     document.getElementById('setEmail').value.trim(),
     formspree: document.getElementById('setFormspree').value.trim(),
     password:  newPw || current.password || DEFAULT_SETTINGS.password,
