@@ -1,21 +1,29 @@
 /* === ANOINTED HANDS · APP.JS === */
 
-// ── Cloudinary Config
-// ✏️ Replace these with your Cloudinary credentials
-const CLOUDINARY_CLOUD_NAME   = 'drg56xfyc';
-const CLOUDINARY_UPLOAD_PRESET = 'anointed_hands';
+// ── Firebase Config
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ── Storage Keys
-const KEYS = {
-  products: 'ah_products',
-  settings: 'ah_settings',
-  orders:   'ah_orders',
+const firebaseConfig = {
+  apiKey: "AIzaSyAXFXyjWERCOLyABnNgVDxPu58CvXrtP9w",
+  authDomain: "anointed-hands-8bfd5.firebaseapp.com",
+  projectId: "anointed-hands-8bfd5",
+  storageBucket: "anointed-hands-8bfd5.firebasestorage.app",
+  messagingSenderId: "891266608638",
+  appId: "1:891266608638:web:8d739371a6b63dc86be4af"
 };
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── Cloudinary Config
+const CLOUDINARY_CLOUD_NAME = 'drg56xfyc';
+const CLOUDINARY_UPLOAD_PRESET = 'anointed_hands';
 
 // ── Demo Placeholder Products (shown until client adds real ones)
 const DEMO_PRODUCTS = [
   {
-    id: 1,
+    id: 'demo1',
     name: 'Decorative Tissue Box Cover',
     category: 'Tissue Boxes',
     price: '$28.00',
@@ -26,7 +34,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 2,
+    id: 'demo2',
     name: 'Handmade Keychain',
     category: 'Key Chains',
     price: '$12.00',
@@ -37,7 +45,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 3,
+    id: 'demo3',
     name: 'Cozy Cup Holder Sleeve',
     category: 'Cup Holders',
     price: '$15.00',
@@ -48,7 +56,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 4,
+    id: 'demo4',
     name: 'Boho Crochet Purse',
     category: 'Purses',
     price: '$55.00',
@@ -59,7 +67,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 5,
+    id: 'demo5',
     name: 'Inspirational Wall Plaque',
     category: 'Wall Plaques',
     price: '$35.00',
@@ -70,7 +78,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 6,
+    id: 'demo6',
     name: 'Soft Baby Blanket',
     category: 'Baby Blankets',
     price: '$65.00',
@@ -81,7 +89,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 7,
+    id: 'demo7',
     name: 'Chunky Knit Beanie',
     category: 'Hats',
     price: '$32.00',
@@ -92,7 +100,7 @@ const DEMO_PRODUCTS = [
     date: 'Demo'
   },
   {
-    id: 8,
+    id: 'demo8',
     name: 'Infinity Scarf',
     category: 'Scarves',
     price: '$40.00',
@@ -106,30 +114,120 @@ const DEMO_PRODUCTS = [
 
 // ── Defaults
 const DEFAULT_SETTINGS = {
-  email:      '',
-  formspree:  '',
-  password:   'ouch2024',
+  email: '',
+  formspree: '',
+  password: 'ouch2024',
 };
 
-// ── Storage helpers
-function getStorage(key, fallback = null) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
+// ── Global state
+let productsCache = [];
+let settingsCache = DEFAULT_SETTINGS;
+let ordersCache = [];
+
+// ── Firebase helpers
+async function loadProducts() {
+  try {
+    const snapshot = await getDocs(collection(db, 'products'));
+    productsCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.error('Error loading products:', err);
+    productsCache = [];
+  }
+  return productsCache.length > 0 ? productsCache : DEMO_PRODUCTS;
 }
-function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+async function loadSettings() {
+  try {
+    const docSnap = await getDoc(doc(db, 'settings', 'main'));
+    if (docSnap.exists()) {
+      settingsCache = { ...DEFAULT_SETTINGS, ...docSnap.data() };
+    }
+  } catch (err) {
+    console.error('Error loading settings:', err);
+  }
+  return settingsCache;
+}
+
+async function loadOrders() {
+  try {
+    const snapshot = await getDocs(collection(db, 'orders'));
+    ordersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    ordersCache.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  } catch (err) {
+    console.error('Error loading orders:', err);
+    ordersCache = [];
+  }
+  return ordersCache;
+}
+
+async function saveProduct(product) {
+  try {
+    const docRef = await addDoc(collection(db, 'products'), product);
+    product.id = docRef.id;
+    productsCache.unshift(product);
+    return true;
+  } catch (err) {
+    console.error('Error saving product:', err);
+    alert('Error saving product. Please try again.');
+    return false;
+  }
+}
+
+async function removeProduct(id) {
+  try {
+    await deleteDoc(doc(db, 'products', id));
+    productsCache = productsCache.filter(p => p.id !== id);
+    return true;
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    alert('Error deleting product. Please try again.');
+    return false;
+  }
+}
+
+async function saveSettings(settings) {
+  try {
+    await setDoc(doc(db, 'settings', 'main'), settings);
+    settingsCache = settings;
+    return true;
+  } catch (err) {
+    console.error('Error saving settings:', err);
+    alert('Error saving settings. Please try again.');
+    return false;
+  }
+}
+
+async function saveOrder(order) {
+  try {
+    order.timestamp = Date.now();
+    const docRef = await addDoc(collection(db, 'orders'), order);
+    order.id = docRef.id;
+    ordersCache.unshift(order);
+    return true;
+  } catch (err) {
+    console.error('Error saving order:', err);
+    return false;
+  }
+}
 
 // ── Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('year').textContent = new Date().getFullYear();
+  
+  // Load data from Firebase
+  await loadSettings();
   applySettings();
+  
+  await loadProducts();
   renderProducts();
+  
   initNav();
 });
 
 // ── Nav
 function initNav() {
   const toggle = document.getElementById('navToggle');
-  const links  = document.getElementById('navLinks');
+  const links = document.getElementById('navLinks');
   toggle?.addEventListener('click', () => links.classList.toggle('open'));
   links?.querySelectorAll('a').forEach(a =>
     a.addEventListener('click', () => links.classList.remove('open'))
@@ -137,29 +235,21 @@ function initNav() {
 }
 
 // ── Settings
-function getSettings() { return getStorage(KEYS.settings, DEFAULT_SETTINGS); }
-
 function applySettings() {
-  const s = getSettings();
+  const s = settingsCache;
   const emailEl = document.getElementById('contactEmail');
   if (emailEl && s.email) emailEl.href = `mailto:${s.email}`;
 }
 
 // ── Products
-function getProducts() { 
-  const stored = getStorage(KEYS.products, []);
-  // Return demo products if no real products exist
-  return stored.length > 0 ? stored : DEMO_PRODUCTS;
-}
-
-function hasRealProducts() {
-  return getStorage(KEYS.products, []).length > 0;
+function getProducts() {
+  return productsCache.length > 0 ? productsCache : DEMO_PRODUCTS;
 }
 
 function renderProducts() {
-  const products   = getProducts();
-  const grid       = document.getElementById('productsGrid');
-  const filtersEl  = document.getElementById('shopFilters');
+  const products = getProducts();
+  const grid = document.getElementById('productsGrid');
+  const filtersEl = document.getElementById('shopFilters');
   if (!grid) return;
 
   const activeFilter = document.querySelector('.filter-btn.active')?.dataset.cat || 'all';
@@ -182,12 +272,12 @@ function renderProducts() {
 
   grid.innerHTML = filtered.map(p => {
     const isDemo = p.date === 'Demo';
-    const buyAction = isDemo 
+    const buyAction = isDemo
       ? `onclick="event.stopPropagation(); alert('🛍️ Demo Mode\\n\\nThis is a placeholder item. When your real products are added, customers will be redirected to Stripe checkout.')"`
       : `href="${p.stripeLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()"`;
-    
+
     return `
-    <div class="product-card" onclick="openProduct(${p.id})">
+    <div class="product-card" onclick="openProduct('${p.id}')">
       <div class="product-card-img">
         ${p.image
           ? `<img src="${p.image}" alt="${p.name}" />`
@@ -211,30 +301,30 @@ function renderProducts() {
   `}).join('');
 }
 
-function filterProducts(cat) {
+window.filterProducts = function(cat) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-cat="${cat}"]`)?.classList.add('active');
   renderProducts();
 }
 
 // ── Product Detail Modal
-function openProduct(id) {
-  const p = getProducts().find(x => x.id === id);
+window.openProduct = function(id) {
+  const products = getProducts();
+  const p = products.find(x => x.id === id || x.id === String(id));
   if (!p) return;
 
   const isDemo = p.date === 'Demo';
 
-  document.getElementById('productModalCat').textContent  = p.category || 'Handmade';
+  document.getElementById('productModalCat').textContent = p.category || 'Handmade';
   document.getElementById('productModalName').textContent = p.name;
   document.getElementById('productModalPrice').textContent = p.price || 'Price on request';
-  document.getElementById('productModalDesc').textContent  = p.description || '';
+  document.getElementById('productModalDesc').textContent = p.description || '';
 
   const imgEl = document.getElementById('productModalImg');
   imgEl.innerHTML = p.image
     ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover" />`
     : `<span style="font-family:'Great Vibes',cursive;font-size:2.5rem;color:var(--gold)">✦</span>`;
 
-  // Actions
   const actions = document.getElementById('productModalActions');
   if (p.available === false) {
     actions.innerHTML = `
@@ -261,37 +351,35 @@ function openProduct(id) {
   document.getElementById('productModal').style.display = 'flex';
 }
 
-function closeProductModal(e) {
+window.closeProductModal = function(e) {
   if (!e || e.target === document.getElementById('productModal'))
     document.getElementById('productModal').style.display = 'none';
 }
 
-// ── Custom Order Form + Formspree
-async function submitCustomOrder(e) {
+// ── Custom Order Form
+window.submitCustomOrder = async function(e) {
   e.preventDefault();
   const form = e.target;
-  const btn  = form.querySelector('button[type="submit"]');
+  const btn = form.querySelector('button[type="submit"]');
   const data = Object.fromEntries(new FormData(form));
 
-  // Save locally
-  data.id   = Date.now();
   data.date = new Date().toLocaleDateString();
-  const orders = getStorage(KEYS.orders, []);
-  orders.unshift(data);
-  setStorage(KEYS.orders, orders);
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  // Save to Firebase
+  await saveOrder(data);
 
   // Send via Formspree if configured
-  const formspreeUrl = getSettings().formspree;
+  const formspreeUrl = settingsCache.formspree;
   if (formspreeUrl) {
-    btn.textContent = 'Sending...';
-    btn.disabled = true;
     try {
       await fetch(formspreeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(data),
       });
-    } catch(err) {
+    } catch (err) {
       console.warn('Formspree error:', err);
     }
   }
@@ -301,24 +389,26 @@ async function submitCustomOrder(e) {
 }
 
 // ── Admin Modal
-function openAdminModal(e) {
+window.openAdminModal = function(e) {
   e?.preventDefault();
-  document.getElementById('adminModal').style.display   = 'flex';
-  document.getElementById('adminLogin').style.display    = 'block';
+  document.getElementById('adminModal').style.display = 'flex';
+  document.getElementById('adminLogin').style.display = 'block';
   document.getElementById('adminDashboard').style.display = 'none';
-  document.getElementById('loginError').style.display    = 'none';
-  document.getElementById('adminPassword').value         = '';
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('adminPassword').value = '';
   setTimeout(() => document.getElementById('adminPassword').focus(), 100);
 }
-function closeAdminModal(e) {
+
+window.closeAdminModal = function(e) {
   if (!e || e.target === document.getElementById('adminModal'))
     document.getElementById('adminModal').style.display = 'none';
 }
-function adminLogin() {
-  const pw      = document.getElementById('adminPassword').value;
-  const correct = getSettings().password || DEFAULT_SETTINGS.password;
+
+window.adminLogin = function() {
+  const pw = document.getElementById('adminPassword').value;
+  const correct = settingsCache.password || DEFAULT_SETTINGS.password;
   if (pw === correct) {
-    document.getElementById('adminLogin').style.display     = 'none';
+    document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminDashboard').style.display = 'block';
     renderAdminProducts();
     renderAdminOrders();
@@ -328,35 +418,40 @@ function adminLogin() {
     document.getElementById('adminPassword').focus();
   }
 }
-function adminLogout() {
+
+window.adminLogout = function() {
   document.getElementById('adminDashboard').style.display = 'none';
-  document.getElementById('adminLogin').style.display      = 'block';
+  document.getElementById('adminLogin').style.display = 'block';
 }
-function showAdminTab(tab, btn) {
+
+window.showAdminTab = async function(tab, btn) {
   document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
   document.getElementById(`tab-${tab}`).style.display = 'block';
   btn.classList.add('active');
   if (tab === 'products') renderAdminProducts();
-  if (tab === 'orders')   renderAdminOrders();
+  if (tab === 'orders') {
+    await loadOrders();
+    renderAdminOrders();
+  }
   if (tab === 'settings') loadAdminSettings();
 }
 
 // ── Cloudinary Upload
 let pendingImageUrl = null;
 
-function triggerImageUpload() {
+window.triggerImageUpload = function() {
   if (CLOUDINARY_CLOUD_NAME === 'YOUR_CLOUD_NAME') {
     alert('⚠️ Cloudinary is not set up yet.\n\nOpen app.js and replace YOUR_CLOUD_NAME and YOUR_UPLOAD_PRESET with your Cloudinary credentials.');
     return;
   }
   const widget = cloudinary.createUploadWidget({
-    cloudName:    CLOUDINARY_CLOUD_NAME,
+    cloudName: CLOUDINARY_CLOUD_NAME,
     uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-    sources:      ['local', 'camera'],
-    multiple:     false,
-    maxFileSize:  10000000,
-    clientAllowedFormats: ['jpg','jpeg','png','webp','gif'],
+    sources: ['local', 'camera'],
+    multiple: false,
+    maxFileSize: 10000000,
+    clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
     styles: {
       palette: {
         window: '#fdfaf5', windowBorder: '#c9b8e8', tabIcon: '#c8882a',
@@ -379,51 +474,63 @@ function triggerImageUpload() {
 }
 
 // ── Add Product
-function addProduct() {
+window.addProduct = async function() {
   const name = document.getElementById('prodName').value.trim();
   if (!name) { alert('Please enter a product name.'); return; }
 
   const product = {
-    id:          Date.now(),
     name,
-    category:    document.getElementById('prodCategory').value.trim() || 'Handmade',
-    price:       document.getElementById('prodPrice').value.trim(),
+    category: document.getElementById('prodCategory').value.trim() || 'Handmade',
+    price: document.getElementById('prodPrice').value.trim(),
     description: document.getElementById('prodDesc').value.trim(),
-    stripeLink:  document.getElementById('prodStripeLink').value.trim(),
-    available:   document.getElementById('prodAvailable').value === 'true',
-    image:       pendingImageUrl || null,
-    date:        new Date().toLocaleDateString(),
+    stripeLink: document.getElementById('prodStripeLink').value.trim(),
+    available: document.getElementById('prodAvailable').value === 'true',
+    image: pendingImageUrl || null,
+    date: new Date().toLocaleDateString(),
   };
 
-  const products = getProducts();
-  products.unshift(product);
-  setStorage(KEYS.products, products);
-  renderProducts();
-  renderAdminProducts();
+  const btn = document.querySelector('#tab-products .btn-primary');
+  btn.textContent = 'Adding...';
+  btn.disabled = true;
 
-  // Reset
-  ['prodName','prodCategory','prodPrice','prodDesc','prodStripeLink'].forEach(id =>
-    document.getElementById(id).value = '');
-  document.getElementById('prodAvailable').value = 'true';
-  document.getElementById('imagePreview').innerHTML = '';
-  pendingImageUrl = null;
+  const success = await saveProduct(product);
+  
+  btn.textContent = 'Add Product to Shop';
+  btn.disabled = false;
+
+  if (success) {
+    renderProducts();
+    renderAdminProducts();
+
+    // Reset form
+    ['prodName', 'prodCategory', 'prodPrice', 'prodDesc', 'prodStripeLink'].forEach(id =>
+      document.getElementById(id).value = '');
+    document.getElementById('prodAvailable').value = 'true';
+    document.getElementById('imagePreview').innerHTML = '';
+    pendingImageUrl = null;
+  }
 }
 
-function deleteProduct(id) {
+window.deleteProduct = async function(id) {
   if (!confirm('Remove this product from the shop?')) return;
-  setStorage(KEYS.products, getProducts().filter(p => p.id !== id));
-  renderProducts();
-  renderAdminProducts();
+  
+  const success = await removeProduct(id);
+  if (success) {
+    renderProducts();
+    renderAdminProducts();
+  }
 }
 
 function renderAdminProducts() {
-  const products = getProducts();
-  const list     = document.getElementById('adminProductList');
+  const products = productsCache;
+  const list = document.getElementById('adminProductList');
   if (!list) return;
+  
   if (products.length === 0) {
     list.innerHTML = '<p style="color:var(--text-light);font-style:italic;margin-top:.5rem">No products yet. Add one above.</p>';
     return;
   }
+  
   list.innerHTML = products.map(p => `
     <div class="admin-product-item">
       ${p.image
@@ -436,42 +543,56 @@ function renderAdminProducts() {
           ${p.stripeLink ? ' · 💳 Stripe ✓' : ' · ⚠️ No Stripe link'}
         </span>
       </div>
-      <button class="delete-btn" onclick="deleteProduct(${p.id})" title="Remove product">✕</button>
+      <button class="delete-btn" onclick="deleteProduct('${p.id}')" title="Remove product">✕</button>
     </div>
   `).join('');
 }
 
 // ── Settings
 function loadAdminSettings() {
-  const s = getSettings();
-  document.getElementById('setEmail').value      = s.email     || '';
-  document.getElementById('setFormspree').value  = s.formspree || '';
-  document.getElementById('setPassword').value   = '';
+  const s = settingsCache;
+  document.getElementById('setEmail').value = s.email || '';
+  document.getElementById('setFormspree').value = s.formspree || '';
+  document.getElementById('setPassword').value = '';
 }
-function saveSettings() {
-  const current = getSettings();
-  const newPw   = document.getElementById('setPassword').value.trim();
+
+window.saveSettingsForm = async function() {
+  const current = settingsCache;
+  const newPw = document.getElementById('setPassword').value.trim();
   const s = {
-    email:     document.getElementById('setEmail').value.trim(),
+    email: document.getElementById('setEmail').value.trim(),
     formspree: document.getElementById('setFormspree').value.trim(),
-    password:  newPw || current.password || DEFAULT_SETTINGS.password,
+    password: newPw || current.password || DEFAULT_SETTINGS.password,
   };
-  setStorage(KEYS.settings, s);
-  applySettings();
-  const msg = document.getElementById('settingsSaved');
-  msg.style.display = 'block';
-  setTimeout(() => msg.style.display = 'none', 3000);
+  
+  const btn = document.querySelector('#tab-settings .btn-primary');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  const success = await saveSettings(s);
+  
+  btn.textContent = 'Save Settings';
+  btn.disabled = false;
+
+  if (success) {
+    applySettings();
+    const msg = document.getElementById('settingsSaved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
 }
 
 // ── Orders
 function renderAdminOrders() {
-  const orders = getStorage(KEYS.orders, []);
-  const list   = document.getElementById('adminOrderList');
+  const orders = ordersCache;
+  const list = document.getElementById('adminOrderList');
   if (!list) return;
+  
   if (orders.length === 0) {
     list.innerHTML = '<p style="color:var(--text-light);font-style:italic;margin-top:.5rem">No custom orders yet.</p>';
     return;
   }
+  
   list.innerHTML = orders.map(o => `
     <div class="admin-product-item" style="flex-direction:column;align-items:flex-start;gap:.5rem">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
