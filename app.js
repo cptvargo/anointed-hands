@@ -117,6 +117,14 @@ const DEFAULT_SETTINGS = {
   email: '',
   formspree: '',
   password: 'ouch2024',
+  featured: {
+    name: 'Custom Crochet Creation',
+    price: 'From $35',
+    sub: 'Personalized · One of a Kind · Spirit-Led',
+    image: '',
+    available: true,
+    stripeLink: '',
+  },
 };
 
 // ── Global state
@@ -220,7 +228,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   await loadProducts();
   renderProducts();
-  
+  renderFeaturedPiece();
+
   initNav();
 });
 
@@ -434,11 +443,95 @@ window.showAdminTab = async function(tab, btn) {
     await loadOrders();
     renderAdminOrders();
   }
+  if (tab === 'featured') loadAdminFeatured();
   if (tab === 'settings') loadAdminSettings();
+}
+
+// ── Featured Piece
+function renderFeaturedPiece() {
+  const f = settingsCache.featured || DEFAULT_SETTINGS.featured;
+
+  const imgEl = document.getElementById('featuredImg');
+  if (imgEl) {
+    imgEl.innerHTML = f.image
+      ? `<img src="${f.image}" alt="${f.name}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />`
+      : `<span style="font-family:'Great Vibes',cursive;font-size:4rem;color:var(--gold)">✦</span>`;
+  }
+
+  const badgeEl = document.getElementById('featuredBadge');
+  if (badgeEl) badgeEl.textContent = f.available !== false ? '✦ Available' : 'Sold Out';
+
+  const nameEl = document.getElementById('featuredName');
+  if (nameEl) nameEl.textContent = f.name || 'Custom Crochet Creation';
+
+  const priceEl = document.getElementById('featuredPrice');
+  if (priceEl) priceEl.textContent = f.price || 'From $35';
+
+  const subEl = document.getElementById('featuredSub');
+  if (subEl) subEl.textContent = f.sub || '';
+
+  const actionEl = document.getElementById('featuredAction');
+  if (actionEl) {
+    if (f.available === false) {
+      actionEl.innerHTML = `<a href="#custom" class="btn-primary" style="display:block;text-align:center;font-size:.65rem;padding:.7rem 1.5rem;margin-top:1rem;">Request a Custom Version</a>`;
+    } else if (f.stripeLink) {
+      actionEl.innerHTML = `<a href="${f.stripeLink}" target="_blank" rel="noopener" class="btn-primary" style="display:block;text-align:center;font-size:.65rem;padding:.7rem 1.5rem;margin-top:1rem;">Buy Now</a>`;
+    } else {
+      actionEl.innerHTML = `<a href="#custom" class="btn-primary" style="display:block;text-align:center;font-size:.65rem;padding:.7rem 1.5rem;margin-top:1rem;">Request This Item</a>`;
+    }
+  }
+}
+
+function loadAdminFeatured() {
+  const f = settingsCache.featured || DEFAULT_SETTINGS.featured;
+  document.getElementById('setFeaturedName').value = f.name || '';
+  document.getElementById('setFeaturedPrice').value = f.price || '';
+  document.getElementById('setFeaturedSub').value = f.sub || '';
+  document.getElementById('setFeaturedAvailable').value = f.available !== false ? 'true' : 'false';
+  document.getElementById('setFeaturedStripeLink').value = f.stripeLink || '';
+  const preview = document.getElementById('featuredImagePreview');
+  if (f.image) {
+    preview.innerHTML = `
+      <img src="${f.image}" alt="Current featured"
+        style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
+      <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">Current photo</p>`;
+  } else {
+    preview.innerHTML = '';
+  }
+  pendingFeaturedImageUrl = null;
+}
+
+window.saveFeaturedForm = async function() {
+  const featured = {
+    name: document.getElementById('setFeaturedName').value.trim() || 'Custom Crochet Creation',
+    price: document.getElementById('setFeaturedPrice').value.trim() || 'From $35',
+    sub: document.getElementById('setFeaturedSub').value.trim() || '',
+    available: document.getElementById('setFeaturedAvailable').value === 'true',
+    stripeLink: document.getElementById('setFeaturedStripeLink').value.trim(),
+    image: pendingFeaturedImageUrl || settingsCache.featured?.image || '',
+  };
+
+  const btn = document.querySelector('#tab-featured .btn-primary');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  const success = await saveSettings({ ...settingsCache, featured });
+
+  btn.textContent = 'Save Featured Piece';
+  btn.disabled = false;
+
+  if (success) {
+    renderFeaturedPiece();
+    pendingFeaturedImageUrl = null;
+    const msg = document.getElementById('featuredSaved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
 }
 
 // ── Cloudinary Upload
 let pendingImageUrl = null;
+let pendingFeaturedImageUrl = null;
 
 window.triggerImageUpload = function() {
   if (CLOUDINARY_CLOUD_NAME === 'YOUR_CLOUD_NAME') {
@@ -465,6 +558,39 @@ window.triggerImageUpload = function() {
       pendingImageUrl = result.info.secure_url;
       document.getElementById('imagePreview').innerHTML = `
         <img src="${pendingImageUrl}" alt="Preview"
+          style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
+        <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">✦ Photo uploaded successfully</p>`;
+      widget.close();
+    }
+  });
+  widget.open();
+}
+
+window.triggerFeaturedImageUpload = function() {
+  if (CLOUDINARY_CLOUD_NAME === 'YOUR_CLOUD_NAME') {
+    alert('⚠️ Cloudinary is not set up yet.\n\nOpen app.js and replace YOUR_CLOUD_NAME and YOUR_UPLOAD_PRESET with your Cloudinary credentials.');
+    return;
+  }
+  const widget = cloudinary.createUploadWidget({
+    cloudName: CLOUDINARY_CLOUD_NAME,
+    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+    sources: ['local', 'camera'],
+    multiple: false,
+    maxFileSize: 10000000,
+    clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    styles: {
+      palette: {
+        window: '#fdfaf5', windowBorder: '#c9b8e8', tabIcon: '#c8882a',
+        menuIcons: '#7b6aaa', textDark: '#3a2e52', textLight: '#ffffff',
+        link: '#c8882a', action: '#c8882a', inactiveTabIcon: '#b09fd4',
+        error: '#c0392b', inProgress: '#c8882a', complete: '#2ecc71', sourceBg: '#f5f0ff',
+      },
+    },
+  }, (error, result) => {
+    if (!error && result?.event === 'success') {
+      pendingFeaturedImageUrl = result.info.secure_url;
+      document.getElementById('featuredImagePreview').innerHTML = `
+        <img src="${pendingFeaturedImageUrl}" alt="Preview"
           style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
         <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">✦ Photo uploaded successfully</p>`;
       widget.close();
