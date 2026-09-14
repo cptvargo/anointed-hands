@@ -19,6 +19,21 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const ADMIN_EMAIL = 'jvonne8@gmail.com';
 
+// ── Keep modal sizing in sync with the actual visible area (so the on-screen
+// keyboard doesn't cover fields — mobile browsers shrink the visual viewport
+// without shrinking the fixed-position layout viewport to match).
+function syncViewportVars() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
+  document.documentElement.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+}
+if (window.visualViewport) {
+  syncViewportVars();
+  window.visualViewport.addEventListener('resize', syncViewportVars);
+  window.visualViewport.addEventListener('scroll', syncViewportVars);
+}
+
 // ── Cloudinary Config
 const CLOUDINARY_CLOUD_NAME = 'drg56xfyc';
 const CLOUDINARY_UPLOAD_PRESET = 'anointed_hands';
@@ -545,74 +560,75 @@ window.saveFeaturedForm = async function() {
   }
 }
 
-// ── Cloudinary Upload
+// ── Image Upload (resized/compressed client-side before upload, for faster uploads on slow connections)
 let pendingImageUrl = null;
 let pendingFeaturedImageUrl = null;
 
-window.triggerImageUpload = function() {
-  if (CLOUDINARY_CLOUD_NAME === 'YOUR_CLOUD_NAME') {
-    alert('⚠️ Cloudinary is not set up yet.\n\nOpen app.js and replace YOUR_CLOUD_NAME and YOUR_UPLOAD_PRESET with your Cloudinary credentials.');
-    return;
-  }
-  const widget = cloudinary.createUploadWidget({
-    cloudName: CLOUDINARY_CLOUD_NAME,
-    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-    sources: ['local', 'camera'],
-    multiple: false,
-    maxFileSize: 10000000,
-    clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-    styles: {
-      palette: {
-        window: '#fdfaf5', windowBorder: '#c9b8e8', tabIcon: '#c8882a',
-        menuIcons: '#7b6aaa', textDark: '#3a2e52', textLight: '#ffffff',
-        link: '#c8882a', action: '#c8882a', inactiveTabIcon: '#b09fd4',
-        error: '#c0392b', inProgress: '#c8882a', complete: '#2ecc71', sourceBg: '#f5f0ff',
-      },
-    },
-  }, (error, result) => {
-    if (!error && result?.event === 'success') {
-      pendingImageUrl = result.info.secure_url;
-      document.getElementById('imagePreview').innerHTML = `
-        <img src="${pendingImageUrl}" alt="Preview"
-          style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
-        <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">✦ Photo uploaded successfully</p>`;
-      widget.close();
-    }
+function compressImage(file, maxDimension = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not read image'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) { height = Math.round(height * maxDimension / width); width = maxDimension; }
+          else { width = Math.round(width * maxDimension / height); height = maxDimension; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', quality);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   });
-  widget.open();
+}
+
+async function uploadToCloudinary(blob) {
+  const formData = new FormData();
+  formData.append('file', blob);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json();
+  return data.secure_url;
+}
+
+window.triggerImageUpload = function() {
+  document.getElementById('productImageInput').click();
 }
 
 window.triggerFeaturedImageUpload = function() {
-  if (CLOUDINARY_CLOUD_NAME === 'YOUR_CLOUD_NAME') {
-    alert('⚠️ Cloudinary is not set up yet.\n\nOpen app.js and replace YOUR_CLOUD_NAME and YOUR_UPLOAD_PRESET with your Cloudinary credentials.');
-    return;
+  document.getElementById('featuredImageInput').click();
+}
+
+window.handleImageFile = async function(e, target) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const previewId = target === 'featured' ? 'featuredImagePreview' : 'imagePreview';
+  const preview = document.getElementById(previewId);
+  preview.innerHTML = `<p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">Uploading…</p>`;
+  try {
+    const compressed = await compressImage(file);
+    const url = await uploadToCloudinary(compressed);
+    if (target === 'featured') pendingFeaturedImageUrl = url; else pendingImageUrl = url;
+    preview.innerHTML = `
+      <img src="${url}" alt="Preview"
+        style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
+      <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">✦ Photo uploaded successfully</p>`;
+  } catch (err) {
+    console.error('Image upload error:', err);
+    preview.innerHTML = `<p style="font-size:.72rem;color:#c0392b;margin-top:.35rem;text-align:center">Upload failed. Please try again.</p>`;
   }
-  const widget = cloudinary.createUploadWidget({
-    cloudName: CLOUDINARY_CLOUD_NAME,
-    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-    sources: ['local', 'camera'],
-    multiple: false,
-    maxFileSize: 10000000,
-    clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-    styles: {
-      palette: {
-        window: '#fdfaf5', windowBorder: '#c9b8e8', tabIcon: '#c8882a',
-        menuIcons: '#7b6aaa', textDark: '#3a2e52', textLight: '#ffffff',
-        link: '#c8882a', action: '#c8882a', inactiveTabIcon: '#b09fd4',
-        error: '#c0392b', inProgress: '#c8882a', complete: '#2ecc71', sourceBg: '#f5f0ff',
-      },
-    },
-  }, (error, result) => {
-    if (!error && result?.event === 'success') {
-      pendingFeaturedImageUrl = result.info.secure_url;
-      document.getElementById('featuredImagePreview').innerHTML = `
-        <img src="${pendingFeaturedImageUrl}" alt="Preview"
-          style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-top:.5rem;border:1.5px solid var(--lavender)" />
-        <p style="font-size:.72rem;color:var(--lavender-dark);margin-top:.35rem;text-align:center">✦ Photo uploaded successfully</p>`;
-      widget.close();
-    }
-  });
-  widget.open();
+  e.target.value = '';
 }
 
 // ── Add Product

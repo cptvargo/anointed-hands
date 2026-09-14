@@ -7,7 +7,6 @@
   <meta name="description" content="Original · Unique · Created · Handmade — Crochet items designed with you in mind, created with love in every stitch." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Great+Vibes&family=Josefin+Sans:wght@300;400&display=swap" rel="stylesheet" />
-  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
 </head>
@@ -240,6 +239,7 @@
           <div class="fg" style="margin-top:.75rem">
             <label>Product Photo</label>
             <button type="button" onclick="triggerImageUpload()" class="upload-photo-btn">📷 Upload Photo from Device</button>
+            <input type="file" id="productImageInput" accept="image/*" style="display:none" onchange="handleImageFile(event,'product')" />
             <div id="imagePreview"></div>
           </div>
           <div class="fg" style="margin-top:.75rem">
@@ -272,6 +272,7 @@
           <div class="fg" style="margin-bottom:.75rem">
             <label>Photo</label>
             <button class="btn-ghost" style="width:100%;font-size:.8rem;padding:.6rem" onclick="triggerFeaturedImageUpload()">Upload / Change Photo</button>
+            <input type="file" id="featuredImageInput" accept="image/*" style="display:none" onchange="handleImageFile(event,'featured')" />
             <div id="featuredImagePreview"></div>
           </div>
           <div class="fg" style="margin-top:.75rem"><label>Piece Name</label><input type="text" id="setFeaturedName" class="admin-input" placeholder="Custom Crochet Creation" /></div>

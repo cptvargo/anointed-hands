@@ -161,7 +161,7 @@ section{scroll-margin-top:80px}
 .admin-fab:hover{background:var(--lavender-dark);color:#fff}
 
 /* MODALS */
-.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(58,46,82,.6);backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
+.modal-overlay{position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vv-height,100vh);z-index:200;background:rgba(58,46,82,.6);backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
 .modal{background:var(--cream);border-radius:20px;padding:2.5rem;width:100%;max-width:560px;margin:auto 0;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .modal-close{position:absolute;top:1.25rem;right:1.25rem;background:none;border:none;font-size:1.2rem;color:var(--text-light);cursor:pointer}
 .admin-input{font-family:'Cormorant Garamond',serif;font-size:1rem;padding:.7rem 1rem;border:1.5px solid var(--lavender);border-radius:10px;background:#fff;color:var(--text);width:100%;margin-top:.35rem;transition:border-color .2s}
