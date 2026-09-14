@@ -3,7 +3,7 @@
 // ── Firebase Config
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
@@ -444,16 +444,13 @@ window.closeAdminModal = function(e) {
     document.getElementById('adminModal').style.display = 'none';
 }
 
-window.adminLogin = function() {
-  document.getElementById('loginError').style.display = 'none';
-  signInWithRedirect(auth, new GoogleAuthProvider());
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 }
 
-// Picks up the result after Google redirects back to the page.
-getRedirectResult(auth).then(result => {
-  if (!result?.user) return;
+function handleSignedInUser(user) {
   document.getElementById('adminModal').style.display = 'flex';
-  if (result.user.email !== ADMIN_EMAIL) {
+  if (user.email !== ADMIN_EMAIL) {
     signOut(auth);
     document.getElementById('adminLogin').style.display = 'block';
     document.getElementById('adminDashboard').style.display = 'none';
@@ -465,6 +462,29 @@ getRedirectResult(auth).then(result => {
   document.getElementById('adminDashboard').style.display = 'block';
   renderAdminProducts();
   renderAdminOrders();
+}
+
+// Redirect works more reliably on mobile (popups get blocked there), but
+// modern Chrome's storage partitioning can break redirect sign-in on
+// desktop — so use popup on desktop and redirect only on mobile/tablet.
+window.adminLogin = function() {
+  document.getElementById('loginError').style.display = 'none';
+  const provider = new GoogleAuthProvider();
+  if (isMobileDevice()) {
+    signInWithRedirect(auth, provider);
+    return;
+  }
+  signInWithPopup(auth, provider).then(result => handleSignedInUser(result.user)).catch(err => {
+    console.error('Google sign-in error:', err);
+    document.getElementById('loginError').textContent = 'Sign-in failed. Please try again.';
+    document.getElementById('loginError').style.display = 'block';
+  });
+}
+
+// Picks up the result after Google redirects back to the page (mobile flow).
+getRedirectResult(auth).then(result => {
+  if (!result?.user) return;
+  handleSignedInUser(result.user);
 }).catch(err => console.error('Google sign-in error:', err));
 
 window.adminLogout = async function() {
