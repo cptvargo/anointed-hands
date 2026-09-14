@@ -1,0 +1,5 @@
+_worker.js
+wrangler.jsonc
+firebase.json
+firestore.rules
+README.md

@@ -243,9 +243,9 @@
             <div id="imagePreview"></div>
           </div>
           <div class="fg" style="margin-top:.75rem">
-            <label>Stripe Payment Link</label>
-            <input type="text" id="prodStripeLink" class="admin-input" placeholder="https://buy.stripe.com/..." />
-            <p style="font-size:.72rem;color:var(--text-light);margin-top:.3rem;font-style:italic">Create a payment link in your Stripe dashboard and paste it here.</p>
+            <label>Stripe Payment Link (optional)</label>
+            <input type="text" id="prodStripeLink" class="admin-input" placeholder="Leave blank to generate automatically" />
+            <p style="font-size:.72rem;color:var(--text-light);margin-top:.3rem;font-style:italic">We'll create the Stripe payment link for you when you add the product. Only paste one here if you want to reuse an existing link.</p>
           </div>
           <div class="fg" style="margin-top:.75rem"><label>Availability</label>
             <select id="prodAvailable" class="admin-input">
@@ -287,8 +287,8 @@
           </div>
           <div class="fg" style="margin-top:.75rem">
             <label>Stripe Link <span style="font-weight:400;font-style:italic">(optional)</span></label>
-            <input type="text" id="setFeaturedStripeLink" class="admin-input" placeholder="https://buy.stripe.com/..." />
-            <p style="font-size:.72rem;color:var(--text-light);margin-top:.3rem;font-style:italic">If set, the hero button becomes a direct Buy Now link.</p>
+            <input type="text" id="setFeaturedStripeLink" class="admin-input" placeholder="Leave blank to generate automatically" />
+            <p style="font-size:.72rem;color:var(--text-light);margin-top:.3rem;font-style:italic">We'll create one for you if left blank, so the hero button becomes a direct Buy Now link.</p>
           </div>
           <button class="btn-primary" style="width:100%;text-align:center;margin-top:1.25rem" onclick="saveFeaturedForm()">Save Featured Piece</button>
           <p id="featuredSaved" style="display:none;color:var(--gold);margin-top:.75rem;font-size:.85rem;text-align:center">✦ Featured piece updated!</p>

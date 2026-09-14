@@ -542,18 +542,38 @@ function loadAdminFeatured() {
 }
 
 window.saveFeaturedForm = async function() {
-  const featured = {
-    name: document.getElementById('setFeaturedName').value.trim() || 'Custom Crochet Creation',
-    price: document.getElementById('setFeaturedPrice').value.trim() || 'From $35',
-    sub: document.getElementById('setFeaturedSub').value.trim() || '',
-    available: document.getElementById('setFeaturedAvailable').value === 'true',
-    stripeLink: document.getElementById('setFeaturedStripeLink').value.trim(),
-    image: pendingFeaturedImageUrl || settingsCache.featured?.image || '',
-  };
+  const name = document.getElementById('setFeaturedName').value.trim() || 'Custom Crochet Creation';
+  const price = document.getElementById('setFeaturedPrice').value.trim() || 'From $35';
+  const image = pendingFeaturedImageUrl || settingsCache.featured?.image || '';
+  let stripeLink = document.getElementById('setFeaturedStripeLink').value.trim();
 
   const btn = document.querySelector('#tab-featured .btn-primary');
-  btn.textContent = 'Saving...';
   btn.disabled = true;
+
+  if (!stripeLink) {
+    btn.textContent = 'Creating payment link...';
+    try {
+      stripeLink = await createStripePaymentLink({ name, description: document.getElementById('setFeaturedSub').value.trim(), price, image });
+    } catch (err) {
+      console.error('Stripe payment link error:', err);
+      if (!confirm(`Could not create a Stripe payment link automatically (${err.message}).\n\nSave without one for now? You can paste a link in later.`)) {
+        btn.textContent = 'Save Featured Piece';
+        btn.disabled = false;
+        return;
+      }
+    }
+  }
+
+  const featured = {
+    name,
+    price,
+    sub: document.getElementById('setFeaturedSub').value.trim() || '',
+    available: document.getElementById('setFeaturedAvailable').value === 'true',
+    stripeLink,
+    image,
+  };
+
+  btn.textContent = 'Saving...';
 
   const success = await saveSettings({ ...settingsCache, featured });
 
@@ -640,28 +660,61 @@ window.handleImageFile = async function(e, target) {
   e.target.value = '';
 }
 
+// ── Stripe Payment Links (created automatically via the server-side Worker)
+async function createStripePaymentLink({ name, description, price, image }) {
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch('/api/create-payment-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ name, description, price, image }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to create payment link');
+  return data.url;
+}
+
 // ── Add Product
 window.addProduct = async function() {
   const name = document.getElementById('prodName').value.trim();
   if (!name) { alert('Please enter a product name.'); return; }
 
+  const category = document.getElementById('prodCategory').value.trim() || 'Handmade';
+  const price = document.getElementById('prodPrice').value.trim();
+  const description = document.getElementById('prodDesc').value.trim();
+  let stripeLink = document.getElementById('prodStripeLink').value.trim();
+
+  const btn = document.querySelector('#tab-products .btn-primary');
+  btn.disabled = true;
+
+  if (!stripeLink) {
+    btn.textContent = 'Creating payment link...';
+    try {
+      stripeLink = await createStripePaymentLink({ name, description, price, image: pendingImageUrl });
+    } catch (err) {
+      console.error('Stripe payment link error:', err);
+      if (!confirm(`Could not create a Stripe payment link automatically (${err.message}).\n\nAdd the product without one for now? You can paste a link in later.`)) {
+        btn.textContent = 'Add Product to Shop';
+        btn.disabled = false;
+        return;
+      }
+    }
+  }
+
   const product = {
     name,
-    category: document.getElementById('prodCategory').value.trim() || 'Handmade',
-    price: document.getElementById('prodPrice').value.trim(),
-    description: document.getElementById('prodDesc').value.trim(),
-    stripeLink: document.getElementById('prodStripeLink').value.trim(),
+    category,
+    price,
+    description,
+    stripeLink,
     available: document.getElementById('prodAvailable').value === 'true',
     image: pendingImageUrl || null,
     date: new Date().toLocaleDateString(),
   };
 
-  const btn = document.querySelector('#tab-products .btn-primary');
   btn.textContent = 'Adding...';
-  btn.disabled = true;
 
   const success = await saveProduct(product);
-  
+
   btn.textContent = 'Add Product to Shop';
   btn.disabled = false;
 
