@@ -3,7 +3,7 @@
 // ── Firebase Config
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
@@ -444,10 +444,6 @@ window.closeAdminModal = function(e) {
     document.getElementById('adminModal').style.display = 'none';
 }
 
-function isMobileDevice() {
-  return /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
-}
-
 function handleSignedInUser(user) {
   document.getElementById('adminModal').style.display = 'flex';
   if (user.email !== ADMIN_EMAIL) {
@@ -464,28 +460,31 @@ function handleSignedInUser(user) {
   renderAdminOrders();
 }
 
-// Redirect works more reliably on mobile (popups get blocked there), but
-// modern Chrome's storage partitioning can break redirect sign-in on
-// desktop — so use popup on desktop and redirect only on mobile/tablet.
-window.adminLogin = function() {
+// Google Identity Services renders its own sign-in button and hands back a
+// credential via this callback directly (no popup window, no full-page
+// redirect) — sidesteps the cross-domain storage issues that broke both
+// popup and redirect sign-in on some devices.
+async function handleGoogleCredentialResponse(response) {
   document.getElementById('loginError').style.display = 'none';
-  const provider = new GoogleAuthProvider();
-  if (isMobileDevice()) {
-    signInWithRedirect(auth, provider);
-    return;
-  }
-  signInWithPopup(auth, provider).then(result => handleSignedInUser(result.user)).catch(err => {
+  try {
+    const credential = GoogleAuthProvider.credential(response.credential);
+    const result = await signInWithCredential(auth, credential);
+    handleSignedInUser(result.user);
+  } catch (err) {
     console.error('Google sign-in error:', err);
     document.getElementById('loginError').textContent = 'Sign-in failed. Please try again.';
     document.getElementById('loginError').style.display = 'block';
-  });
+  }
 }
 
-// Picks up the result after Google redirects back to the page (mobile flow).
-getRedirectResult(auth).then(result => {
-  if (!result?.user) return;
-  handleSignedInUser(result.user);
-}).catch(err => console.error('Google sign-in error:', err));
+const GOOGLE_CLIENT_ID = '674554963797-k4n03qtrbfauotukr6o4bs49406lt48a.apps.googleusercontent.com';
+
+function initGoogleSignInButton() {
+  if (!window.google?.accounts?.id) { setTimeout(initGoogleSignInButton, 300); return; }
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredentialResponse });
+  google.accounts.id.renderButton(document.getElementById('googleSignInBtn'), { theme: 'outline', size: 'large', text: 'signin_with', width: 280 });
+}
+initGoogleSignInButton();
 
 window.adminLogout = async function() {
   await signOut(auth);

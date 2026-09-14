@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Great+Vibes&family=Josefin+Sans:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -215,7 +216,7 @@
       <div id="adminLogin">
         <h2 class="script" style="font-size:2rem;color:var(--gold)">Admin Access</h2>
         <p style="margin-bottom:1.5rem;color:var(--text-light)">Sign in with your Google account to manage the shop.</p>
-        <button class="btn-primary" style="width:100%;text-align:center" onclick="adminLogin()">Sign in with Google</button>
+        <div id="googleSignInBtn" style="display:flex;justify-content:center"></div>
         <p id="loginError" style="color:#c0392b;display:none;margin-top:.75rem;font-size:.85rem"></p>
       </div>
 
