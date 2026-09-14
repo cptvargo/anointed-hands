@@ -3,18 +3,21 @@
 // ── Firebase Config
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAXFXyjWERCOLyABnNgVDxPu58CvXrtP9w",
-  authDomain: "anointed-hands-8bfd5.firebaseapp.com",
-  projectId: "anointed-hands-8bfd5",
-  storageBucket: "anointed-hands-8bfd5.firebasestorage.app",
-  messagingSenderId: "891266608638",
-  appId: "1:891266608638:web:8d739371a6b63dc86be4af"
+  apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
+  authDomain: "anointed-hands-c87c6.firebaseapp.com",
+  projectId: "anointed-hands-c87c6",
+  storageBucket: "anointed-hands-c87c6.firebasestorage.app",
+  messagingSenderId: "674554963797",
+  appId: "1:674554963797:web:74528fa0398b3be90931dc"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const ADMIN_EMAIL = 'jvonne8@gmail.com';
 
 // ── Cloudinary Config
 const CLOUDINARY_CLOUD_NAME = 'drg56xfyc';
@@ -116,7 +119,6 @@ const DEMO_PRODUCTS = [
 const DEFAULT_SETTINGS = {
   email: '',
   formspree: '',
-  password: 'ouch2024',
   featured: {
     name: 'Custom Crochet Creation',
     price: 'From $35',
@@ -397,15 +399,20 @@ window.submitCustomOrder = async function(e) {
   document.getElementById('formSuccess').style.display = 'block';
 }
 
-// ── Admin Modal
+// ── Admin Modal (Google Sign-In, restricted to ADMIN_EMAIL)
 window.openAdminModal = function(e) {
   e?.preventDefault();
   document.getElementById('adminModal').style.display = 'flex';
-  document.getElementById('adminLogin').style.display = 'block';
-  document.getElementById('adminDashboard').style.display = 'none';
   document.getElementById('loginError').style.display = 'none';
-  document.getElementById('adminPassword').value = '';
-  setTimeout(() => document.getElementById('adminPassword').focus(), 100);
+  if (auth.currentUser?.email === ADMIN_EMAIL) {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminDashboard').style.display = 'block';
+    renderAdminProducts();
+    renderAdminOrders();
+  } else {
+    document.getElementById('adminLogin').style.display = 'block';
+    document.getElementById('adminDashboard').style.display = 'none';
+  }
 }
 
 window.closeAdminModal = function(e) {
@@ -413,22 +420,29 @@ window.closeAdminModal = function(e) {
     document.getElementById('adminModal').style.display = 'none';
 }
 
-window.adminLogin = function() {
-  const pw = document.getElementById('adminPassword').value;
-  const correct = settingsCache.password || DEFAULT_SETTINGS.password;
-  if (pw === correct) {
+window.adminLogin = async function() {
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const result = await signInWithPopup(auth, new GoogleAuthProvider());
+    if (result.user.email !== ADMIN_EMAIL) {
+      await signOut(auth);
+      document.getElementById('loginError').textContent = 'This Google account is not authorized for admin access.';
+      document.getElementById('loginError').style.display = 'block';
+      return;
+    }
     document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminDashboard').style.display = 'block';
     renderAdminProducts();
     renderAdminOrders();
-  } else {
+  } catch (err) {
+    console.error('Google sign-in error:', err);
+    document.getElementById('loginError').textContent = 'Sign-in failed. Please try again.';
     document.getElementById('loginError').style.display = 'block';
-    document.getElementById('adminPassword').value = '';
-    document.getElementById('adminPassword').focus();
   }
 }
 
-window.adminLogout = function() {
+window.adminLogout = async function() {
+  await signOut(auth);
   document.getElementById('adminDashboard').style.display = 'none';
   document.getElementById('adminLogin').style.display = 'block';
 }
@@ -679,18 +693,15 @@ function loadAdminSettings() {
   const s = settingsCache;
   document.getElementById('setEmail').value = s.email || '';
   document.getElementById('setFormspree').value = s.formspree || '';
-  document.getElementById('setPassword').value = '';
 }
 
 window.saveSettingsForm = async function() {
-  const current = settingsCache;
-  const newPw = document.getElementById('setPassword').value.trim();
   const s = {
+    ...settingsCache,
     email: document.getElementById('setEmail').value.trim(),
     formspree: document.getElementById('setFormspree').value.trim(),
-    password: newPw || current.password || DEFAULT_SETTINGS.password,
   };
-  
+
   const btn = document.querySelector('#tab-settings .btn-primary');
   btn.textContent = 'Saving...';
   btn.disabled = true;

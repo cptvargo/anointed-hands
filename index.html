@@ -215,10 +215,9 @@
       <!-- Login -->
       <div id="adminLogin">
         <h2 class="script" style="font-size:2rem;color:var(--gold)">Admin Access</h2>
-        <p style="margin-bottom:1.5rem;color:var(--text-light)">Enter your password to manage the shop.</p>
-        <div class="fg"><input type="password" id="adminPassword" placeholder="Password" class="admin-input" onkeydown="if(event.key==='Enter')adminLogin()" /></div>
-        <button class="btn-primary" style="width:100%;margin-top:1rem;text-align:center" onclick="adminLogin()">Enter</button>
-        <p id="loginError" style="color:#c0392b;display:none;margin-top:.75rem;font-size:.85rem">Incorrect password. Try again.</p>
+        <p style="margin-bottom:1.5rem;color:var(--text-light)">Sign in with your Google account to manage the shop.</p>
+        <button class="btn-primary" style="width:100%;text-align:center" onclick="adminLogin()">Sign in with Google</button>
+        <p id="loginError" style="color:#c0392b;display:none;margin-top:.75rem;font-size:.85rem"></p>
       </div>
 
       <!-- Dashboard -->
@@ -301,7 +300,6 @@
             <input type="text" id="setFormspree" class="admin-input" placeholder="https://formspree.io/f/xxxxxxxx" />
             <p style="font-size:.72rem;color:var(--text-light);margin-top:.3rem;font-style:italic">Get this from formspree.io — receives custom order emails.</p>
           </div>
-          <div class="fg" style="margin-top:.75rem"><label>Change Admin Password</label><input type="password" id="setPassword" class="admin-input" placeholder="New password" /></div>
           <button class="btn-primary" style="width:100%;text-align:center;margin-top:1.25rem" onclick="saveSettingsForm()">Save Settings</button>
           <p id="settingsSaved" style="display:none;color:var(--gold);margin-top:.75rem;font-size:.85rem;text-align:center">✦ Settings saved successfully!</p>
         </div>
