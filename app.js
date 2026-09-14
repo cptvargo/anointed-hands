@@ -821,6 +821,64 @@ function renderAdminOrders() {
       </div>
       <div style="font-size:.85rem">🧶 <strong>${o.itemType}</strong></div>
       <div style="font-size:.88rem;font-style:italic;border-left:2px solid var(--lavender);padding-left:.75rem;color:var(--text);line-height:1.6">${o.description}</div>
+      <div style="width:100%;border-top:1px solid var(--lavender-light);margin-top:.5rem;padding-top:.75rem">
+        ${!o.depositLink ? `
+          <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px"><label style="font-size:.75rem">Agreed Total Price ($)</label><input type="text" id="orderPrice-${o.id}" class="admin-input" placeholder="e.g. 75.00" /></div>
+            <button class="btn-primary" style="font-size:.75rem;padding:.6rem 1rem;white-space:nowrap" onclick="createDepositLink('${o.id}')">Set Price & Create Deposit Link</button>
+          </div>
+          <p style="font-size:.7rem;color:var(--text-light);margin-top:.3rem;font-style:italic">Creates a 50% deposit payment link to send her customer. Come back once the piece is finished to create the balance link for the other 50%.</p>
+        ` : `
+          <div style="font-size:.8rem;margin-bottom:.4rem">💰 Total agreed: $${o.totalPrice}</div>
+          <div style="font-size:.8rem;margin-bottom:.4rem;word-break:break-all">✅ Deposit link: <a href="${o.depositLink}" target="_blank" rel="noopener">${o.depositLink}</a></div>
+          ${o.balanceLink
+            ? `<div style="font-size:.8rem;word-break:break-all">✅ Balance link: <a href="${o.balanceLink}" target="_blank" rel="noopener">${o.balanceLink}</a></div>`
+            : `<button class="btn-ghost" style="font-size:.75rem;padding:.5rem 1rem" onclick="createBalanceLink('${o.id}')">Item Finished — Create Balance Payment Link</button>`}
+        `}
+      </div>
     </div>
   `).join('');
+}
+
+window.createDepositLink = async function(orderId) {
+  const priceInput = document.getElementById(`orderPrice-${orderId}`);
+  const totalPrice = parseFloat(priceInput.value);
+  if (!totalPrice || totalPrice <= 0) { alert('Enter a valid total price first.'); return; }
+
+  const order = ordersCache.find(o => o.id === orderId);
+  if (!order) return;
+
+  try {
+    const depositLink = await createStripePaymentLink({
+      name: `Custom Order Deposit — ${order.itemType || 'Crochet Item'}`,
+      description: `50% deposit for ${order.firstName || ''} ${order.lastName || ''}'s custom order. Total agreed price: $${totalPrice.toFixed(2)}.`,
+      price: (totalPrice / 2).toFixed(2),
+    });
+    await setDoc(doc(db, 'orders', orderId), { totalPrice: totalPrice.toFixed(2), depositLink }, { merge: true });
+    order.totalPrice = totalPrice.toFixed(2);
+    order.depositLink = depositLink;
+    renderAdminOrders();
+  } catch (err) {
+    console.error('Deposit link error:', err);
+    alert('Could not create the deposit payment link: ' + err.message);
+  }
+}
+
+window.createBalanceLink = async function(orderId) {
+  const order = ordersCache.find(o => o.id === orderId);
+  if (!order || !order.totalPrice) return;
+
+  try {
+    const balanceLink = await createStripePaymentLink({
+      name: `Custom Order Balance — ${order.itemType || 'Crochet Item'}`,
+      description: `Remaining 50% balance for ${order.firstName || ''} ${order.lastName || ''}'s custom order. Total agreed price: $${order.totalPrice}.`,
+      price: (parseFloat(order.totalPrice) / 2).toFixed(2),
+    });
+    await setDoc(doc(db, 'orders', orderId), { balanceLink }, { merge: true });
+    order.balanceLink = balanceLink;
+    renderAdminOrders();
+  } catch (err) {
+    console.error('Balance link error:', err);
+    alert('Could not create the balance payment link: ' + err.message);
+  }
 }
