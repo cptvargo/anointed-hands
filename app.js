@@ -34,6 +34,15 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', syncViewportVars);
 }
 
+// Force the focused field into view once the keyboard finishes animating in —
+// on a short/landscape screen, whatever sliver of space remains above the
+// keyboard may not contain the field the browser scrolled to by default.
+document.addEventListener('focusin', (e) => {
+  if (!e.target.matches('input, textarea, select')) return;
+  const el = e.target;
+  setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+});
+
 // ── Cloudinary Config
 const CLOUDINARY_CLOUD_NAME = 'drg56xfyc';
 const CLOUDINARY_UPLOAD_PRESET = 'anointed_hands';
