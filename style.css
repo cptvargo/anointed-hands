@@ -192,7 +192,7 @@ section{scroll-margin-top:80px}
   .nav{padding:1rem 1.5rem}
   .container{padding:0 1.5rem}
 }
-@media(max-width:860px){
+@media(max-width:1080px){
   .nav-links{display:none;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:var(--cream);padding:1.5rem;gap:1rem;border-bottom:1px solid var(--lavender-light)}
   .nav-links.open{display:flex}
   .nav-toggle{display:block}

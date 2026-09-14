@@ -3,7 +3,7 @@
 // ── Firebase Config
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
@@ -420,26 +420,28 @@ window.closeAdminModal = function(e) {
     document.getElementById('adminModal').style.display = 'none';
 }
 
-window.adminLogin = async function() {
+window.adminLogin = function() {
   document.getElementById('loginError').style.display = 'none';
-  try {
-    const result = await signInWithPopup(auth, new GoogleAuthProvider());
-    if (result.user.email !== ADMIN_EMAIL) {
-      await signOut(auth);
-      document.getElementById('loginError').textContent = 'This Google account is not authorized for admin access.';
-      document.getElementById('loginError').style.display = 'block';
-      return;
-    }
-    document.getElementById('adminLogin').style.display = 'none';
-    document.getElementById('adminDashboard').style.display = 'block';
-    renderAdminProducts();
-    renderAdminOrders();
-  } catch (err) {
-    console.error('Google sign-in error:', err);
-    document.getElementById('loginError').textContent = 'Sign-in failed. Please try again.';
-    document.getElementById('loginError').style.display = 'block';
-  }
+  signInWithRedirect(auth, new GoogleAuthProvider());
 }
+
+// Picks up the result after Google redirects back to the page.
+getRedirectResult(auth).then(result => {
+  if (!result?.user) return;
+  document.getElementById('adminModal').style.display = 'flex';
+  if (result.user.email !== ADMIN_EMAIL) {
+    signOut(auth);
+    document.getElementById('adminLogin').style.display = 'block';
+    document.getElementById('adminDashboard').style.display = 'none';
+    document.getElementById('loginError').textContent = 'This Google account is not authorized for admin access.';
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  document.getElementById('adminLogin').style.display = 'none';
+  document.getElementById('adminDashboard').style.display = 'block';
+  renderAdminProducts();
+  renderAdminOrders();
+}).catch(err => console.error('Google sign-in error:', err));
 
 window.adminLogout = async function() {
   await signOut(auth);
