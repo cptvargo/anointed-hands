@@ -7,7 +7,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
-  authDomain: "anointed-hands-c87c6.firebaseapp.com",
+  authDomain: "anointedhandsshop.com",
   projectId: "anointed-hands-c87c6",
   storageBucket: "anointed-hands-c87c6.firebasestorage.app",
   messagingSenderId: "674554963797",

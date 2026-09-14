@@ -1,5 +1,28 @@
 const ADMIN_EMAIL = 'jvonne8@gmail.com';
 const FIREBASE_API_KEY = 'AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0';
+const FIREBASE_AUTH_DOMAIN = 'anointed-hands-c87c6.firebaseapp.com';
+
+// Proxies Firebase's OAuth handler pages through our own domain instead of
+// firebaseapp.com. Firebase Hosting does this automatically for sites hosted
+// there; since this site is on Cloudflare instead, sign-in would otherwise
+// need to correlate state across two different domains — which is exactly
+// what modern browsers' storage-partitioning rules break, causing sign-in
+// to loop. Keeping the whole flow on one origin avoids that entirely.
+async function proxyAuthHandler(request) {
+  const url = new URL(request.url);
+  const targetUrl = `https://${FIREBASE_AUTH_DOMAIN}${url.pathname}${url.search}`;
+  const response = await fetch(new Request(targetUrl, request));
+
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('Location');
+    if (location && location.includes(FIREBASE_AUTH_DOMAIN)) {
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set('Location', location.replace(`https://${FIREBASE_AUTH_DOMAIN}`, `https://${url.hostname}`));
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers: newHeaders });
+    }
+  }
+  return response;
+}
 
 async function verifyAdmin(request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -65,6 +88,10 @@ async function createPaymentLink(env, { name, description, price, image }) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname.startsWith('/__/auth/')) {
+      return proxyAuthHandler(request);
+    }
 
     if (url.pathname === '/api/create-payment-link' && request.method === 'POST') {
       try {
