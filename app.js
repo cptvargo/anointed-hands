@@ -19,6 +19,14 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const ADMIN_EMAIL = 'jvonne8@gmail.com';
 
+// Escapes untrusted text before it's inserted into innerHTML — public visitors
+// can submit custom order text directly, so it must never be trusted as HTML.
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
 // ── Keep modal sizing in sync with the actual visible area (so the on-screen
 // keyboard doesn't cover fields — mobile browsers shrink the visual viewport
 // without shrinking the fixed-position layout viewport to match).
@@ -315,16 +323,16 @@ function renderProducts() {
     <div class="product-card" onclick="openProduct('${p.id}')">
       <div class="product-card-img">
         ${p.image
-          ? `<img src="${p.image}" alt="${p.name}" />`
+          ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" />`
           : `<span>✦</span>`}
       </div>
       ${isDemo ? '<div class="demo-overlay">Demo</div>' : ''}
       ${p.available === false ? '<div class="sold-overlay">Sold Out</div>' : ''}
       <div class="product-card-body">
-        <div class="product-card-cat">${p.category || 'Handmade'}</div>
-        <div class="product-card-name">${p.name}</div>
+        <div class="product-card-cat">${escapeHtml(p.category) || 'Handmade'}</div>
+        <div class="product-card-name">${escapeHtml(p.name)}</div>
         <div class="product-card-footer">
-          <span class="product-card-price">${p.price || 'Custom'}</span>
+          <span class="product-card-price">${escapeHtml(p.price) || 'Custom'}</span>
           ${p.stripeLink && p.available !== false
             ? `<a ${buyAction} class="btn-buy">Buy Now</a>`
             : p.available === false
@@ -357,7 +365,7 @@ window.openProduct = function(id) {
 
   const imgEl = document.getElementById('productModalImg');
   imgEl.innerHTML = p.image
-    ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover" />`
+    ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover" />`
     : `<span style="font-family:'Great Vibes',cursive;font-size:2.5rem;color:var(--gold)">✦</span>`;
 
   const actions = document.getElementById('productModalActions');
@@ -771,12 +779,12 @@ function renderAdminProducts() {
   list.innerHTML = products.map(p => `
     <div class="admin-product-item">
       ${p.image
-        ? `<img src="${p.image}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--lavender)" />`
+        ? `<img src="${escapeHtml(p.image)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--lavender)" />`
         : `<div style="width:52px;height:52px;border-radius:8px;background:var(--lavender-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">✦</div>`}
       <div style="flex:1;min-width:0">
-        <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</strong>
+        <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</strong>
         <span style="font-size:.75rem;color:var(--text-light)">
-          ${p.category} · ${p.price || 'No price'} · ${p.available !== false ? '✅ Available' : '❌ Sold Out'}
+          ${escapeHtml(p.category)} · ${escapeHtml(p.price) || 'No price'} · ${p.available !== false ? '✅ Available' : '❌ Sold Out'}
           ${p.stripeLink ? ' · 💳 Stripe ✓' : ' · ⚠️ No Stripe link'}
         </span>
       </div>
@@ -830,14 +838,14 @@ function renderAdminOrders() {
   list.innerHTML = orders.map(o => `
     <div class="admin-product-item" style="flex-direction:column;align-items:flex-start;gap:.5rem">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
-        <strong>${o.firstName || ''} ${o.lastName || ''}</strong>
-        <span style="font-size:.72rem;color:var(--text-light);background:var(--lavender-light);padding:.2rem .6rem;border-radius:100px">${o.date}</span>
+        <strong>${escapeHtml(o.firstName)} ${escapeHtml(o.lastName)}</strong>
+        <span style="font-size:.72rem;color:var(--text-light);background:var(--lavender-light);padding:.2rem .6rem;border-radius:100px">${escapeHtml(o.date)}</span>
       </div>
       <div style="font-size:.82rem;color:var(--text-light)">
-        📧 ${o.email}${o.phone ? ' &nbsp;·&nbsp; 📱 ' + o.phone : ''} &nbsp;·&nbsp; 💳 ${o.payment || 'Not specified'}
+        📧 ${escapeHtml(o.email)}${o.phone ? ' &nbsp;·&nbsp; 📱 ' + escapeHtml(o.phone) : ''} &nbsp;·&nbsp; 💳 ${escapeHtml(o.payment) || 'Not specified'}
       </div>
-      <div style="font-size:.85rem">🧶 <strong>${o.itemType}</strong></div>
-      <div style="font-size:.88rem;font-style:italic;border-left:2px solid var(--lavender);padding-left:.75rem;color:var(--text);line-height:1.6">${o.description}</div>
+      <div style="font-size:.85rem">🧶 <strong>${escapeHtml(o.itemType)}</strong></div>
+      <div style="font-size:.88rem;font-style:italic;border-left:2px solid var(--lavender);padding-left:.75rem;color:var(--text);line-height:1.6">${escapeHtml(o.description)}</div>
       <div style="width:100%;border-top:1px solid var(--lavender-light);margin-top:.5rem;padding-top:.75rem">
         ${!o.depositLink ? `
           <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
