@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Great+Vibes&family=Josefin+Sans:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -215,8 +214,12 @@
       <!-- Login -->
       <div id="adminLogin">
         <h2 class="script" style="font-size:2rem;color:var(--gold)">Admin Access</h2>
-        <p style="margin-bottom:1.5rem;color:var(--text-light)">Sign in with your Google account to manage the shop.</p>
-        <div id="googleSignInBtn" style="display:flex;justify-content:center"></div>
+        <p style="margin-bottom:1.5rem;color:var(--text-light)">Sign in to manage the shop.</p>
+        <form onsubmit="adminLogin(event)">
+          <div class="fg"><input type="email" id="adminEmailInput" placeholder="Email" class="admin-input" required /></div>
+          <div class="fg" style="margin-top:.75rem"><input type="password" id="adminPasswordInput" placeholder="Password" class="admin-input" required /></div>
+          <button type="submit" class="btn-primary" style="width:100%;margin-top:1rem;text-align:center">Log In</button>
+        </form>
         <p id="loginError" style="color:#c0392b;display:none;margin-top:.75rem;font-size:.85rem"></p>
       </div>
 
@@ -304,6 +307,10 @@
           </div>
           <button class="btn-primary" style="width:100%;text-align:center;margin-top:1.25rem" onclick="saveSettingsForm()">Save Settings</button>
           <p id="settingsSaved" style="display:none;color:var(--gold);margin-top:.75rem;font-size:.85rem;text-align:center">✦ Settings saved successfully!</p>
+
+          <h3 style="margin:2rem 0 .75rem;font-size:1rem;font-family:'Josefin Sans',sans-serif;letter-spacing:.05em">Change Your Password</h3>
+          <div class="fg"><input type="password" id="changePasswordInput" class="admin-input" placeholder="New password" /></div>
+          <button class="btn-ghost" style="width:100%;text-align:center;margin-top:.75rem" onclick="changeAdminPassword()">Update Password</button>
         </div>
 
         <button class="btn-ghost" style="width:100%;margin-top:1.5rem" onclick="adminLogout()">Logout</button>

@@ -3,7 +3,7 @@
 // ── Firebase Config
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, updatePassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2LTIVS9qOS_K4JC1EkCXRiATvmnqWbD0",
@@ -423,19 +423,25 @@ window.submitCustomOrder = async function(e) {
   document.getElementById('formSuccess').style.display = 'block';
 }
 
-// ── Admin Modal (Google Sign-In, restricted to ADMIN_EMAIL)
+// ── Admin Modal (email + password, via Firebase Auth)
+function showAdminDashboard() {
+  document.getElementById('adminModal').style.display = 'flex';
+  document.getElementById('adminLogin').style.display = 'none';
+  document.getElementById('adminDashboard').style.display = 'block';
+  renderAdminProducts();
+  renderAdminOrders();
+}
+
 window.openAdminModal = function(e) {
   e?.preventDefault();
   document.getElementById('adminModal').style.display = 'flex';
   document.getElementById('loginError').style.display = 'none';
-  if (auth.currentUser?.email === ADMIN_EMAIL) {
-    document.getElementById('adminLogin').style.display = 'none';
-    document.getElementById('adminDashboard').style.display = 'block';
-    renderAdminProducts();
-    renderAdminOrders();
+  if (auth.currentUser) {
+    showAdminDashboard();
   } else {
     document.getElementById('adminLogin').style.display = 'block';
     document.getElementById('adminDashboard').style.display = 'none';
+    document.getElementById('adminEmailInput').value = ADMIN_EMAIL;
   }
 }
 
@@ -444,52 +450,44 @@ window.closeAdminModal = function(e) {
     document.getElementById('adminModal').style.display = 'none';
 }
 
-function handleSignedInUser(user) {
-  document.getElementById('adminModal').style.display = 'flex';
-  if (user.email !== ADMIN_EMAIL) {
-    signOut(auth);
-    document.getElementById('adminLogin').style.display = 'block';
-    document.getElementById('adminDashboard').style.display = 'none';
-    document.getElementById('loginError').textContent = 'This Google account is not authorized for admin access.';
-    document.getElementById('loginError').style.display = 'block';
-    return;
-  }
-  document.getElementById('adminLogin').style.display = 'none';
-  document.getElementById('adminDashboard').style.display = 'block';
-  renderAdminProducts();
-  renderAdminOrders();
-}
-
-// Google Identity Services renders its own sign-in button and hands back a
-// credential via this callback directly (no popup window, no full-page
-// redirect) — sidesteps the cross-domain storage issues that broke both
-// popup and redirect sign-in on some devices.
-async function handleGoogleCredentialResponse(response) {
+window.adminLogin = async function(e) {
+  e?.preventDefault();
   document.getElementById('loginError').style.display = 'none';
+  const email = document.getElementById('adminEmailInput').value.trim();
+  const password = document.getElementById('adminPasswordInput').value;
   try {
-    const credential = GoogleAuthProvider.credential(response.credential);
-    const result = await signInWithCredential(auth, credential);
-    handleSignedInUser(result.user);
+    await signInWithEmailAndPassword(auth, email, password);
+    document.getElementById('adminPasswordInput').value = '';
+    showAdminDashboard();
   } catch (err) {
-    console.error('Google sign-in error:', err);
-    document.getElementById('loginError').textContent = 'Sign-in failed. Please try again.';
+    console.error('Sign-in error:', err);
+    document.getElementById('loginError').textContent = 'Incorrect email or password.';
     document.getElementById('loginError').style.display = 'block';
   }
 }
-
-const GOOGLE_CLIENT_ID = '674554963797-k4n03qtrbfauotukr6o4bs49406lt48a.apps.googleusercontent.com';
-
-function initGoogleSignInButton() {
-  if (!window.google?.accounts?.id) { setTimeout(initGoogleSignInButton, 300); return; }
-  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredentialResponse });
-  google.accounts.id.renderButton(document.getElementById('googleSignInBtn'), { theme: 'outline', size: 'large', text: 'signin_with', width: 280 });
-}
-initGoogleSignInButton();
 
 window.adminLogout = async function() {
   await signOut(auth);
   document.getElementById('adminDashboard').style.display = 'none';
   document.getElementById('adminLogin').style.display = 'block';
+}
+
+window.changeAdminPassword = async function() {
+  const input = document.getElementById('changePasswordInput');
+  const newPassword = input.value.trim();
+  if (newPassword.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  try {
+    await updatePassword(auth.currentUser, newPassword);
+    input.value = '';
+    alert('Password updated. Use your new password next time you log in.');
+  } catch (err) {
+    console.error('Change password error:', err);
+    if (err.code === 'auth/requires-recent-login') {
+      alert('For security, please log out and log back in, then try changing your password again right away.');
+    } else {
+      alert('Could not update password: ' + err.message);
+    }
+  }
 }
 
 window.showAdminTab = async function(tab, btn) {
