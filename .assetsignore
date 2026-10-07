@@ -3,3 +3,7 @@ wrangler.jsonc
 firebase.json
 firestore.rules
 README.md
+.git
+.git/**
+.gitignore
+.assetsignore
